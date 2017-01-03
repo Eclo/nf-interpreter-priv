@@ -40,21 +40,29 @@ set(S19_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.s19)
 set(BIN_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.bin)
 set(DUMP_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.lst)
 
-# copy target file to build folder (this is only usefull for debugging in VS Code because of path in launch.json)
-file(COPY "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}" DESTINATION "${PROJECT_SOURCE_DIR}/build/")
-
 # generate HEX, BIN and LST files as needed
 if(CMAKE_BUILD_TYPE EQUAL "Release")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            # copy target image to other formats
             COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}> ${HEX_FILE}
             COMMAND ${CMAKE_OBJCOPY} -Osrec $<TARGET_FILE:${PROJECT_NAME}> ${S19_FILE}
             COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}> ${BIN_FILE}
+            
+            # copy target file to build folder (this is only usefull for debugging in VS Code because of path in launch.json)
+            COMMAND ${CMAKE_OBJCOPY} $<TARGET_FILE:${PROJECT_NAME}> ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}            
+            
             COMMENT "Generate HEX and BIN files fro deployment")
 else()
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            # copy target image to other formats
             COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}> ${HEX_FILE}
             COMMAND ${CMAKE_OBJCOPY} -Osrec $<TARGET_FILE:${PROJECT_NAME}> ${S19_FILE}
             COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}> ${BIN_FILE}
+            
+            # copy target file to build folder (this is only usefull for debugging in VS Code because of path in launch.json)
+            COMMAND ${CMAKE_OBJCOPY} $<TARGET_FILE:${PROJECT_NAME}> ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}
+            
+            # dump target image as source code listing
             COMMAND ${CMAKE_OBJDUMP} -d -EL -S $<TARGET_FILE:${PROJECT_NAME}> > ${DUMP_FILE}
             COMMENT "Generate HEX and BIN files for deployment, LST file for debug")
 endif()
