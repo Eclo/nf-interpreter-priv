@@ -342,7 +342,8 @@ elseif(RTOS_FREERTOS_CHECK)
     include_directories( ${CMSIS_RTOS_INCLUDE_DIR})
    
     # add source directory
-    add_subdirectory("source")
+    add_subdirectory("stcube_repository")
+    add_subdirectory("targets/os/freertos/nanoBooter")
 
 #######################
 # mBed OS
