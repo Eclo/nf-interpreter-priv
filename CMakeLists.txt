@@ -247,7 +247,7 @@ if(RTOS_CHIBIOS_CHECK)
     include_directories( ${CMSIS_RTOS_INCLUDE_DIR})
    
     # add source directory
-    add_subdirectory("targets/os/chibios/nanoBooter")
+    add_subdirectory("targets/os/chibios/nanoBooter-cdc")
 
 #######################
 # FreeRTOS
