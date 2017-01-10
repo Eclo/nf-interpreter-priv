@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 2.8.2)
+
+project(micro-os-plus-iii-download NONE)
+
+include(ExternalProject)
+
+# download µOS++ III source from official GitHub repo
+ExternalProject_Add( 
+    micro-os-plus-iii
+    PREFIX micro-os-plus-iii
+    SOURCE_DIR ${CMAKE_BINARY_DIR}/micro-os-plus-iii_Source
+    GIT_REPOSITORY  https://github.com/micro-os-plus/micro-os-plus-iii/
+    GIT_TAG xpack  # target xpack branch
+    GIT_SHALLOW 1   # download only the tip of the branch, not the complete history
+    TIMEOUT 10
+    LOG_DOWNLOAD 1
+    
+    # Disable all other steps
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)

@@ -36,6 +36,8 @@ elseif(STM32_SERIES STREQUAL "F4")
     list(APPEND CMSIS_COMMON_HEADERS core_cm4.h)
     set(CMSIS_DEVICE_HEADERS stm32f4xx.h system_stm32f4xx.h)
     set(CMSIS_DEVICE_SOURCES system_stm32f4xx.c)
+    
+    set(CMSIS_STARTUP_SOURCE vectors_stm32f407xx.c)
 
 elseif(STM32_SERIES STREQUAL "F7")
 

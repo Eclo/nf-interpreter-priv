@@ -34,22 +34,33 @@ endif()
 # handle RTOSes choice
 
 # sanity check here for invalid RTOS option
-set(RTOS_SUPPORTED CHIBIOS FREERTOS MBEDOS RTXRTOS RTXRTOS2 CACHE INTERNAL "supported RTOS options")
+set(RTOS_SUPPORTED CHIBIOS FREERTOS MBEDOS MICROOSPLUS RTXRTOS RTXRTOS2 CACHE INTERNAL "supported RTOS options")
 list(FIND RTOS_SUPPORTED ${RTOS} RTOS_INDEX)
 if(RTOS_INDEX EQUAL -1)
     message(FATAL_ERROR "\n\nSorry but ${RTOS} is not supported at this time...\nYou can wait for that to be added or you might want to contribute and start working on a PR for that.\n\n")
 endif()
 
-string(COMPARE EQUAL "CHIBIOS" "${RTOS}"  RTOS_CHIBIOS_CHECK)
-string(COMPARE EQUAL "FREERTOS" "${RTOS}" RTOS_FREERTOS_CHECK)
-string(COMPARE EQUAL "MBEDOS"   "${RTOS}" RTOS_MBEDOS_CHECK)
-string(COMPARE EQUAL "RTXRTOS"  "${RTOS}" RTOS_RTX_RTOS_CHECK)
-string(COMPARE EQUAL "RTXRTOS2" "${RTOS}" RTOS_RTX_RTOS2_CHECK)
+string(COMPARE EQUAL "CHIBIOS"      "${RTOS}" RTOS_CHIBIOS_CHECK)
+string(COMPARE EQUAL "FREERTOS"     "${RTOS}" RTOS_FREERTOS_CHECK)
+string(COMPARE EQUAL "MBEDOS"       "${RTOS}" RTOS_MBEDOS_CHECK)
+string(COMPARE EQUAL "MICROOSPLUS"  "${RTOS}" RTOS_MICROOSPLUS_CHECK)
+string(COMPARE EQUAL "RTXRTOS"      "${RTOS}" RTOS_RTX_RTOS_CHECK)
+string(COMPARE EQUAL "RTXRTOS2"     "${RTOS}" RTOS_RTX_RTOS2_CHECK)
+
+if(RTOS_CHIBIOS_CHECK) 
+    set(RTOS_CHIBIOS_CHECK TRUE)
+    set(RTOS_FREERTOS_CHECK FALSE)
+    set(RTOS_MBEDOS_CHECK FALSE)
+    set(RTOS_MICROOSPLUS_CHECK FALSE)
+    set(RTOS_RTX_RTOS_CHECK FALSE)
+    set(RTOS_RTX_RTOS2_CHECK FALSE)
+endif()
 
 if(RTOS_FREERTOS_CHECK) 
     set(RTOS_FREERTOS_CHECK TRUE)
     set(RTOS_CHIBIOS_CHECK FALSE)
     set(RTOS_MBEDOS_CHECK FALSE)
+    set(RTOS_MICROOSPLUS_CHECK FALSE)
     set(RTOS_RTX_RTOS_CHECK FALSE)
     set(RTOS_RTX_RTOS2_CHECK FALSE)
 endif()
@@ -58,12 +69,14 @@ if(RTOS_MBEDOS_CHECK)
     set(RTOS_MBEDOS_CHECK TRUE)
     set(RTOS_CHIBIOS_CHECK FALSE)
     set(RTOS_FREERTOS_CHECK FALSE)
+    set(RTOS_MICROOSPLUS_CHECK FALSE)
     set(RTOS_RTX_RTOS_CHECK FALSE)
     set(RTOS_RTX_RTOS2_CHECK FALSE)
 endif()
 
-if(RTOS_CHIBIOS_CHECK) 
-    set(RTOS_CHIBIOS_CHECK TRUE)
+if(RTOS_MICROOSPLUS_CHECK) 
+    set(RTOS_MICROOSPLUS_CHECK TRUE)
+    set(RTOS_CHIBIOS_CHECK FALSE)
     set(RTOS_FREERTOS_CHECK FALSE)
     set(RTOS_MBEDOS_CHECK FALSE)
     set(RTOS_RTX_RTOS_CHECK FALSE)
@@ -75,6 +88,7 @@ if(RTOS_RTX_RTOS_CHECK)
     set(RTOS_CHIBIOS_CHECK FALSE)
     set(RTOS_FREERTOS_CHECK FALSE)
     set(RTOS_MBEDOS_CHECK FALSE)
+    set(RTOS_MICROOSPLUS_CHECK FALSE)
     set(RTOS_RTX_RTOS2_CHECK FALSE)
 endif()
 
@@ -83,6 +97,7 @@ if(RTOS_RTX_RTOS2_CHECK)
     set(RTOS_CHIBIOS_CHECK FALSE)
     set(RTOS_FREERTOS_CHECK FALSE)
     set(RTOS_MBEDOS_CHECK FALSE)
+    set(RTOS_MICROOSPLUS_CHECK FALSE)
     set(RTOS_RTX_RTOS_CHECK FALSE)
 endif()
 
@@ -107,6 +122,12 @@ elseif(RTOS_MBEDOS_CHECK)
     message(STATUS "\nSetting Toolchain file for mBed \n")
     # set toolchain file
     set(CMAKE_TOOLCHAIN_FILE CMake/toolchain.mBed.${TOOLCHAIN}.cmake)
+
+elseif(RTOS_MICROOSPLUS_CHECK)
+
+    message(STATUS "\nSetting Toolchain file for µOS++ III \n")
+    # set toolchain file
+    set(CMAKE_TOOLCHAIN_FILE CMake/toolchain.MICROOSPLUS.${TOOLCHAIN}.cmake)
 
 else()
 
@@ -441,6 +462,165 @@ elseif(RTOS_MBEDOS_CHECK)
    
     # add source directory
     add_subdirectory("targets/os/mbed-os/nanoBooter")
+
+#######################
+# µOS++ III OS
+elseif(RTOS_MICROOSPLUS_CHECK)
+
+    # check if MICROOSPLUS_SOURCE was specified or if it's empty (default is empty)
+    set(NO_MICROOSPLUS_SOURCE TRUE)
+    if(MICROOSPLUS_SOURCE)
+        if(NOT "${MICROOSPLUS_SOURCE}" STREQUAL "")
+            set(NO_MICROOSPLUS_SOURCE FALSE)
+        endif()
+    endif()
+
+    # check if MICROOSPLUS_CORTEXM_SOURCE was specified or if it's empty (default is empty)
+    set(NO_MICROOSPLUS_CORTEXM_SOURCE TRUE)
+    if(MICROOSPLUS_CORTEXM_SOURCE)
+        if(NOT "${MICROOSPLUS_CORTEXM_SOURCE}" STREQUAL "")
+            set(NO_MICROOSPLUS_CORTEXM_SOURCE FALSE)
+        endif()
+    endif()
+
+    if(NO_MICROOSPLUS_SOURCE)
+        # no µOS++ III source specified, download it from it's repo
+
+        # hack to make the FindGit to work in Windows platforms (check the module comment for details)
+        include(Hack_SetGitSearchPath)
+
+        # check for Git (needed here for advanced warning to user if it's not installed)
+        find_package(Git)
+
+        #  check if Git was found, if not report to user and abort
+        if(NOT GIT_EXECUTABLE)
+        message(FATAL_ERROR "error: could not find Git, make sure you have it installed.")
+        endif()
+
+        message(STATUS "RTOS is: µOS++ III (latest available code from GitHub repo)")
+
+        # need to setup a separate CMake project to download the code from the SVN repository
+        # otherwise it won't be available before the actual build step
+        configure_file("CMake/microOSplusIII.CMakeLists.cmake.in"
+                    "${CMAKE_BINARY_DIR}/micro-os-plus-iii_Download/CMakeLists.txt")
+        
+        # setup CMake project for µOS++ III download
+        execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+                        RESULT_VARIABLE result
+                        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/micro-os-plus-iii_Download")
+
+        # run build on µOS++ III download CMake project to perform the download
+        execute_process(COMMAND ${CMAKE_COMMAND} --build .
+                        RESULT_VARIABLE result
+                        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/micro-os-plus-iii_Download")
+               
+        # download µOS++ III source from official GitHub repo
+        ExternalProject_Add( 
+            micro-os-plus-iii
+            PREFIX micro-os-plus-iii
+            SOURCE_DIR ${CMAKE_BINARY_DIR}/micro-os-plus-iii_Source
+            GIT_REPOSITORY  https://github.com/micro-os-plus/micro-os-plus-iii/
+            GIT_TAG xpack  # target xpack branch
+            GIT_SHALLOW 1   # download only the tip of the branch, not the complete history
+            TIMEOUT 10
+            LOG_DOWNLOAD 1
+            
+            # Disable all other steps
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+        )
+
+        # set update disconnected to prevent updates on builds
+        set_property(DIRECTORY ${MICROOSPLUS_SOURCE_DIR} PROPERTY EP_UPDATE_DISCONNECTED 1)
+
+    else()
+        # µOS++ III source location was specified
+
+        if(NOT EXISTS "${PROJECT_BINARY_DIR}/micro-os-plus-iii_Source")
+            # need to copy srouce to build directory
+            message(STATUS "RTOS is: µOS++ III (copying source from: ${MICROOSPLUS_SOURCE})")
+
+            file(COPY "${MICROOSPLUS_SOURCE}/" DESTINATION "${PROJECT_BINARY_DIR}/micro-os-plus-iii_Source")
+        elseif()
+            # source directory  already at build folder so we are done here
+            message(STATUS "RTOS is: µOS++ III (source from: ${MICROOSPLUS_SOURCE} already at build directory)")
+        endif()
+
+    endif()
+
+    if(NO_MICROOSPLUS_CORTEXM_SOURCE)
+        # no µOS++ III CortexM source specified, download it from it's repo
+
+        # hack to make the FindGit to work in Windows platforms (check the module comment for details)
+        include(Hack_SetGitSearchPath)
+
+        # check for Git (needed here for advanced warning to user if it's not installed)
+        find_package(Git)
+
+        #  check if Git was found, if not report to user and abort
+        if(NOT GIT_EXECUTABLE)
+        message(FATAL_ERROR "error: could not find Git, make sure you have it installed.")
+        endif()
+
+        # need to setup a separate CMake project to download the code from the SVN repository
+        # otherwise it won't be available before the actual build step
+        configure_file("CMake/microOSplusIIICortexM.CMakeLists.cmake.in"
+                    "${CMAKE_BINARY_DIR}/micro-os-plus-iii-cortexm_Download/CMakeLists.txt")
+        
+        # setup CMake project for µOS++ III CortexM download
+        execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+                        RESULT_VARIABLE result
+                        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/micro-os-plus-iii-cortexm_Download")
+
+        # run build on µOS++ III download CMake project to perform the download
+        execute_process(COMMAND ${CMAKE_COMMAND} --build .
+                        RESULT_VARIABLE result
+                        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/micro-os-plus-iii-cortexm_Download")
+               
+        # download µOS++ III CortexM source from official GitHub repo
+        ExternalProject_Add( 
+            micro-os-plus-iii-cortexm
+            PREFIX micro-os-plus-iii-cortexm
+            SOURCE_DIR ${CMAKE_BINARY_DIR}/micro-os-plus-iii-cortexm_Source
+            GIT_REPOSITORY  https://github.com/micro-os-plus/micro-os-plus-iii-cortexm/
+            GIT_TAG xpack  # target xpack branch
+            GIT_SHALLOW 1   # download only the tip of the branch, not the complete history
+            TIMEOUT 10
+            LOG_DOWNLOAD 1
+            
+            # Disable all other steps
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+        )
+
+        # set update disconnected to prevent updates on builds
+        set_property(DIRECTORY ${MICROOSPLUS_CORTEXM_SOURCE} PROPERTY EP_UPDATE_DISCONNECTED 1)
+
+    else()
+        # µOS++ III CortexM source location was specified
+
+        if(NOT EXISTS "${PROJECT_BINARY_DIR}/micro-os-plus-iii-cortexm_Source")
+            # need to copy srouce to build directory
+            message(STATUS "copying µOS++ III CortexM source from: ${MICROOSPLUS_CORTEXM_SOURCE}")
+
+            file(COPY "${MICROOSPLUS_CORTEXM_SOURCE}/" DESTINATION "${PROJECT_BINARY_DIR}/micro-os-plus-iii-cortexm_Source")
+        elseif()
+            # source directory  already at build folder so we are done here
+            message(STATUS "µOS++ III CortexM source from: ${MICROOSPLUS_CORTEXM_SOURCE} already at build directory")
+        endif()
+
+    endif()
+
+    # ST Cube package with CMSIS and SMT32 HAL
+    add_subdirectory("stcube_repository")
+
+    # set CMSIS RTOS include directory
+    include_directories(${CMSIS_RTOS_INCLUDE_DIR})
+
+    # add source directory
+    add_subdirectory("targets/os/micro-os-plus/nanoBooter")
 
 #######################
 # RTX RTOS

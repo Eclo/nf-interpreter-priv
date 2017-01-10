@@ -1,0 +1,6 @@
+[submodule "arm-cmsis"]
+	path = arm-cmsis
+	url = https://github.com/xpacks/arm-cmsis.git
+[submodule "stm32f4-cmsis"]
+	path = stm32f4-cmsis
+	url = https://github.com/xpacks/stm32f4-cmsis.git
