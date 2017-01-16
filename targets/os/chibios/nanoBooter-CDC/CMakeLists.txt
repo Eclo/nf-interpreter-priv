@@ -14,9 +14,9 @@ include_directories(${CHIBIOS_INCLUDE_DIRS})
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -DCORTEX_USE_FPU=FALSE ")
 
 set(PROJECT_SOURCES
-    main.c
+    main.cpp
     usbcfg.c
-    # WireProtocol.cpp
+    WireProtocol.cpp
 )
 
 add_executable(
